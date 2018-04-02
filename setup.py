@@ -72,7 +72,7 @@ setup(
         'Source': 'https://github.com/maceoutliner/django-fiction-outlines-api/',
         'Issue Tracker': 'https://github.com/maceoutliner/django-fiction-outlines-api/issues',
     }
-    python-requires='~=3.6',
+    python_requires='~=3.6',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Django',
