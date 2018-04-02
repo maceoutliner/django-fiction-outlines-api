@@ -71,7 +71,7 @@ setup(
         'Documenation': 'http://django-fiction-outlines-api.readthedocs.io/en/latest/index.html',
         'Source': 'https://github.com/maceoutliner/django-fiction-outlines-api/',
         'Issue Tracker': 'https://github.com/maceoutliner/django-fiction-outlines-api/issues',
-    }
+    },
     python_requires='~=3.6',
     classifiers=[
         'Development Status :: 3 - Alpha',
