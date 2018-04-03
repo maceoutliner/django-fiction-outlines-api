@@ -3,7 +3,7 @@ import pytest
 from django.core.exceptions import ObjectDoesNotExist
 from test_plus import APITestCase
 from fiction_outlines.models import Series, Character, Location, Outline
-from fiction_outlines.models import Arc, ArcElementNode, StoryElementNode
+# from fiction_outlines.models import Arc, ArcElementNode, StoryElementNode
 from fiction_outlines.models import CharacterInstance, LocationInstance
 from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer
 
@@ -212,7 +212,8 @@ class SeriesUpdateView(FictionOutlineAbstractTestCase):
                 self.put('fiction_outlines_api:series_item', series=self.s1.pk, data=self.long_data, extra=self.extra)
                 self.response_403()
                 assert self.s1.title == Series.objects.get(pk=self.s1.pk).title
-                self.patch('fiction_outlines_api:series_item', series=self.s1.pk, data=self.short_data, extra=self.extra)
+                self.patch('fiction_outlines_api:series_item', series=self.s1.pk,
+                           data=self.short_data, extra=self.extra)
                 self.response_403()
                 assert self.s1.title == Series.objects.get(pk=self.s1.pk).title
 
