@@ -1,0 +1,7 @@
+django-fiction-outlines,
+django-rest-framework-rules,
+django-rest-framework,
+coreapi,
+django-filter
+Markdown
+git+https://github.com/maceoutliner/django-taggit-serializer.git
