@@ -1,41 +1,53 @@
 from rest_framework import serializers
+from taggit_serializer.serializers import TaggitSerializer, TagListSerializerField
 from fiction_outlines.models import Series, Character, Location, Outline
 from fiction_outlines.models import CharacterInstance, LocationInstance, Arc
 from fiction_outlines.models import ArcElementNode, StoryElementNode
 
 
-class SeriesSerializer(serializers.ModelSerializer):
+class SeriesSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
     Serializer for Series model.
     '''
+
+    tags = TagListSerializerField()
 
     class Meta:
         model = Series
         fields = ('id', 'title', 'description', 'tags')
 
 
-class CharacterSerializer(serializers.ModelSerializer):
+class CharacterSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
     Serializer for Character model.
     '''
+
+    tags = TagListSerializerField()
+
     class Meta:
         model = Character
         fields = ('id', 'name', 'description', 'series', 'tags')
 
 
-class LocationSerializer(serializers.ModelSerializer):
+class LocationSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
     Serializer for Location model.
     '''
+
+    tags = TagListSerializerField()
+
     class Meta:
         model = Location
         fields = ('id', 'name', 'description', 'series', 'tags')
 
 
-class OutlineSerializer(serializers.ModelSerializer):
+class OutlineSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
     Serializer for Outline model.
     '''
+
+    tags = TagListSerializerField()
+
     class Meta:
         model = Outline
         fields = ('id', 'title', 'description', 'series', 'tags')

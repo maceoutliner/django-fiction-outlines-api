@@ -30,6 +30,14 @@ AUTHENTICATION_BACKENDS = (
 )
 
 
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+    }
+]
+
+
 ROOT_URLCONF = "tests.urls"
 
 INSTALLED_APPS = [
@@ -39,6 +47,7 @@ INSTALLED_APPS = [
     "django.contrib.sites",
     "taggit",
     "rest_framework",
+    "taggit_serializer",
     "rules.apps.AutodiscoverRulesConfig",
     "rest_framework_rules",
     "fiction_outlines",
