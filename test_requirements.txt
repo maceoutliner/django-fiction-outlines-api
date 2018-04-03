@@ -1,3 +1,4 @@
+-r requirements.txt
 django-test-plus
 wheel>=0.30.0
 coverage>=4.4.1
