@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from django.conf.urls import url
-from django.views.generic import TemplateView
+from django.urls import path
 
 from . import views
 
 urlpatterns = [
-    url(r'', TemplateView.as_view(template_name="base.html")),
-    ]
+    path('series/list', views.SeriesList.as_view(), name='series_list'),
+]

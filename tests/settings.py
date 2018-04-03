@@ -13,6 +13,7 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
+        "ATOMIC_REQUESTS": True,
     }
 }
 
@@ -22,6 +23,11 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sites",
+    "taggit",
+    "rest_framework",
+    "rules.apps.AutodiscoverRulesConfig",
+    "rest_framework_rules",
+    "fiction_outlines",
     "fiction_outlines_api",
 ]
 

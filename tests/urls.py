@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, absolute_import
 
-from django.conf.urls import url, include
+from django.urls import path, include
 
 from fiction_outlines_api.urls import urlpatterns as fiction_outlines_api_urls
 
 urlpatterns = [
-    url(r'^', include(fiction_outlines_api_urls, namespace='fiction_outlines_api')),
+    path('api/v1/', include(fiction_outlines_api_urls)),
 ]
