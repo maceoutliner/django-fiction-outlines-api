@@ -1,15 +1,21 @@
+import logging
+from django.db import IntegrityError
 from django.utils.translation import ugettext_lazy as _
-from django.shortcuts import get_object_or_404
+from rest_framework.generics import get_object_or_404
 from rest_framework import generics, status, permissions
 from rest_framework.response import Response
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import PermissionDenied, ParseError
 from rest_framework_rules.mixins import PermissionRequiredMixin
 from fiction_outlines.models import Series, Character, Location, Outline, Arc
+from fiction_outlines.models import CharacterInstance, LocationInstance
+from fiction_outlines.models import ArcElementNode, StoryElementNode
+from fiction_outlines.signals import tree_manipulation
 from .serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
-from .serializers import OutlineSerializer, ArcSerializer, ArcCreateSerializer
-import logging
+from .serializers import OutlineSerializer, ArcSerializer, ArcCreateSerializer, ArcElementNodeSerializer
+from .serializers import StoryElementNodeSerializer, CharacterInstanceSerializer, LocationInstanceSerializer
+from .mixins import NodeMoveMixin, MultiObjectPermissionsMixin, NodeAddMixin
 
-logger = logging.getLogger('api_views')
+logger = logging.getLogger('fiction-outlines-api')
 
 
 class SeriesList(generics.ListCreateAPIView):
@@ -100,6 +106,54 @@ class CharacterDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPI
         return Character.objects.all()
 
 
+class CharacterInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequiredMixin, generics.CreateAPIView):
+    '''
+    API view for creating a character instance. Expects kwargs in url for character and
+    outline. All other data comes from the serializer.
+    '''
+    serializer_class = CharacterInstanceSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_class_permission_dict = {
+        'character': {'obj_class': Character, 'object_permission_required': 'fiction_outlines.edit_character',
+                      'lookup_url_kwarg': 'character'},
+        'outline': {'obj_class': Outline, 'object_permission_required': 'fiction_outlines.edit_outline',
+                    'lookup_url_kwarg': 'outline'},
+    }
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(character=self.permission_object_dict['character'],
+                            outline=self.permission_object_dict['outline'])
+        except IntegrityError:
+            logger.error("Attempt to create a character instance for a character already present in outline.")
+            raise ParseError
+
+
+class CharacterInstanceDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
+    '''
+    API view for non-creation actions on CharacterInstance objects.
+    '''
+    serializer_class = CharacterInstanceSerializer
+    object_permission_required = 'fiction_outlines.view_character_instance'
+    permission_required = 'fiction_outlines_api.valid_user'
+    lookup_url_kwarg = 'instance'
+
+    def put(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_character_instance'
+        return super().put(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_character_instance'
+        return super().patch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_character_instance'
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return CharacterInstance.objects.all()
+
+
 class LocationList(generics.ListCreateAPIView):
     '''
     API view for location list
@@ -150,6 +204,46 @@ class LocationDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIV
 
     def get_queryset(self):
         return Location.objects.all()
+
+
+class LocationInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequiredMixin, generics.CreateAPIView):
+    '''
+    API view for creating a location instance. Expects kwargs in url for location and
+    outline. All other data comes from the serializer.
+    '''
+    serializer_class = LocationInstanceSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_class_permission_dict = {
+        'location': {'obj_class': Location, 'object_permission_required': 'fiction_outlines.edit_location',
+                     'lookup_url_kwarg': 'location'},
+        'outline': {'obj_class': Outline, 'object_permission_required': 'fiction_outlines.edit_outline',
+                    'lookup_url_kwarg': 'outline'},
+    }
+
+    def perform_create(self, serializer):
+        try:
+            serializer.save(location=self.permission_object_dict['location'],
+                            outline=self.permission_object_dict['outline'])
+        except IntegrityError:
+            logger.error("Attempt to create a location instance for a location already present in outline.")
+            raise ParseError
+
+
+class LocationInstanceDetailView(PermissionRequiredMixin, generics.RetrieveDestroyAPIView):
+    '''
+    API view for non-creation actions on LocationInstance objects.
+    '''
+    serializer_class = LocationInstanceSerializer
+    object_permission_required = 'fiction_outlines.view_location_instance'
+    permission_required = 'fiction_outlines_api.valid_user'
+    lookup_url_kwarg = 'instance'
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_location_instance'
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return LocationInstance.objects.all()
 
 
 class OutlineList(generics.ListCreateAPIView):
@@ -264,3 +358,147 @@ class ArcDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVi
 
     def get_queryset(self):
         return Arc.objects.all()
+
+
+class ArcNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
+    '''
+    API for viewing a tree of arc nodes.
+    '''
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = ArcElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.view_arc_node'
+    lookup_url_kwarg = 'arcnode'
+
+    def update(self, request, *args, **kwargs):
+        try:
+            response = super().update(request, *args, **kwargs)
+        except IntegrityError as IE:
+            response = Response({'error': str(IE)}, status=status.HTTP_400_BAD_REQUEST)
+        return response
+
+    def put(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_arc_node'
+        return super().put(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_arc_node'
+        return super().patch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_arc_node'
+        return super().delete(request, *args, **kwargs)
+
+    def destroy(self, request, *args, **kwargs):
+        instance = self.get_object()
+        if instance.arc_element_type in ['mile_hook', 'mile_reso']:
+            raise ParseError('You cannot delete the hook or resolution of an arc.')
+        self.perform_destroy(instance)
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def get_queryset(self):
+        return ArcElementNode.objects.all()  # pragma: no cover
+
+
+class ArcNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.CreateAPIView):
+    '''
+    API view for add_child and add_sibling
+    '''
+    serializer_class = ArcElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.edit_arc_node'
+    fields_required_for_add = ('arc_element_type', 'description', 'story_element_node')
+    lookup_url_kwarg = 'arcnode'
+
+    def get_queryset(self):
+        return ArcElementNode.objects.all()
+
+
+class ArcNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.GenericAPIView):
+    '''
+    View for moving arc nodes.
+    '''
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = ArcElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.edit_arc_node'
+    target_node_type_fieldname = 'arc_element_type'
+    related_key = 'arc'
+
+    def get_queryset(self):
+        return ArcElementNode.objects.all()
+
+
+class StoryNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.GenericAPIView):
+    '''
+    View for moving story nodes.
+    '''
+    serializer_class = StoryElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.edit_story_node'
+    target_node_type_fieldname = 'story_element_type'
+    related_key = 'outline'
+
+    def get_queryset(self):
+        return StoryElementNode.objects.all()
+
+
+class StoryNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.CreateAPIView):
+    '''
+    View for adding story nodes.
+    '''
+    serializer_class = StoryElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.edit_story_node'
+    fields_required_for_add = ('story_element_type', 'name', 'description')
+    lookup_url_kwarg = 'storynode'
+
+    def get_queryset(self):
+        return StoryElementNode.objects.all()
+
+
+class StoryNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
+    '''
+    API for viewing a tree of story nodes.
+    '''
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = StoryElementNodeSerializer
+    permission_required = 'fiction_outlines_api.valid_user'
+    object_permission_required = 'fiction_outlines.view_story_node'
+    lookup_url_kwarg = 'storynode'
+
+    def update(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        if 'story_element_type' in serializer.validated_data.keys():
+            try:
+                instance = self.get_object()
+                tree_manipulation.send(
+                    sender=StoryElementNode,
+                    instance=instance,
+                    action='update',
+                    target_node_type=serializer.validated_data['story_element_type']
+                )
+            except IntegrityError as IE:
+                logger.debug('Changing the node to this type would result in an invalid outline sructure. Details: %s' % str(IE))  # noqa: E501
+                raise ParseError(_(str(IE)))
+        try:
+            response = super().update(request, *args, **kwargs)
+        except IntegrityError as IE:
+            response = Response({'error': str(IE)}, status=status.HTTP_400_BAD_REQUEST)
+        return response
+
+    def put(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_story_node'
+        return super().put(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_story_node'
+        return super().patch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_story_node'
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return StoryElementNode.objects.all()  # pragma: no cover

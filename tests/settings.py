@@ -78,7 +78,7 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
-        'api_views': {
+        'fiction-outlines-api': {
             'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
