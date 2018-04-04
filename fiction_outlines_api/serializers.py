@@ -23,7 +23,7 @@ class CharacterSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
 
     tags = TagListSerializerField()
-    series = serializers.PrimaryKeyRelatedField(many=True, queryset=Series.objects.all())
+    series = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, queryset=Series.objects.all())
 
     class Meta:
         model = Character
@@ -36,7 +36,7 @@ class LocationSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
 
     tags = TagListSerializerField()
-    series = serializers.PrimaryKeyRelatedField(many=True, queryset=Series.objects.all())
+    series = serializers.PrimaryKeyRelatedField(many=True, allow_null=True, queryset=Series.objects.all())
 
     class Meta:
         model = Location
@@ -49,7 +49,7 @@ class OutlineSerializer(TaggitSerializer, serializers.ModelSerializer):
     '''
 
     tags = TagListSerializerField()
-    series = serializers.PrimaryKeyRelatedField(queryset=Series.objects.all())
+    series = serializers.PrimaryKeyRelatedField(allow_null=True, queryset=Series.objects.all())
 
     class Meta:
         model = Outline

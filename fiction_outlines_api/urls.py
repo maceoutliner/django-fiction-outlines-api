@@ -12,4 +12,6 @@ urlpatterns = [
     path('character/<uuid:character>/', views.CharacterDetail.as_view(), name='character_item'),
     path('locations/', views.LocationList.as_view(), name='location_listcreate'),
     path('location/<uuid:location>/', views.LocationDetail.as_view(), name='location_item'),
+    path('outlines/', views.OutlineList.as_view(), name='outline_listcreate'),
+    path('outline/<uuid:outline>/', views.OutlineDetail.as_view(), name='outline_item'),
 ]
