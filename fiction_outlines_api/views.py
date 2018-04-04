@@ -1,8 +1,8 @@
 from rest_framework import generics
 from rest_framework import permissions
 from rest_framework_rules.mixins import PermissionRequiredMixin
-from fiction_outlines.models import Series, Character
-from .serializers import SeriesSerializer, CharacterSerializer
+from fiction_outlines.models import Series, Character, Location
+from .serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
 import logging
 
 logger = logging.getLogger('api_views')
@@ -82,3 +82,43 @@ class CharacterDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPI
 
     def get_queryset(self):
         return Character.objects.all()
+
+
+class LocationList(generics.ListCreateAPIView):
+    '''
+    API view for location list
+    '''
+    permission_classes = (permissions.IsAuthenticated,)
+    serializer_class = LocationSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def get_queryset(self):
+        return Location.objects.filter(user=self.request.user)
+
+
+class LocationDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
+    '''
+    API view for all single item location operations besides create.
+    '''
+    serializer_class = LocationSerializer
+    object_permission_required = 'fiction_outlines.view_location'
+    permission_classes = (permissions.IsAuthenticated,)
+    permission_required = 'fiction_outlines_api.valid_user'
+    lookup_url_kwarg = 'location'
+
+    def put(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_location'
+        return super().put(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_location'
+        return super().patch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_location'
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Location.objects.all()

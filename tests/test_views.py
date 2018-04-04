@@ -5,7 +5,7 @@ from test_plus import APITestCase
 from fiction_outlines.models import Series, Character, Location, Outline
 # from fiction_outlines.models import Arc, ArcElementNode, StoryElementNode
 from fiction_outlines.models import CharacterInstance, LocationInstance
-from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer
+from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
 
 logger = logging.getLogger('test_apiviews')
 logger.setLevel(logging.DEBUG)
@@ -463,3 +463,198 @@ class CharacterDeleteTest(FictionOutlineAbstractTestCase):
             self.response_204()
             with pytest.raises(ObjectDoesNotExist):
                 Character.objects.get(pk=self.c1.pk)
+
+
+# Location Object tests
+
+
+class LocationListTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test case for location listing.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:location_listcreate')
+        self.response_403()
+
+    def test_authenticated_user(self):
+        '''
+        Ensure that users cannot see location that another owns.
+        '''
+        forbidden_character = LocationSerializer(Location.objects.filter(user=self.user1), many=True)
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.assertGoodView('fiction_outlines_api:location_listcreate')
+                results = self.last_response.data
+                for fs in forbidden_character.data:
+                    assert fs not in results
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:location_listcreate')
+            results = self.last_response.data
+            for fs in forbidden_character.data:
+                assert fs in results
+
+
+class LocationCreateTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test for API creation of characters.
+    '''
+
+    data = {
+        'name': 'Margaritaville',
+        'description': 'Missing a shaker of salt.',
+        'tags': ['your dad', 'parrothead'],
+        'series': []
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.data['series'] = [self.s1.pk]
+
+    def test_login_required(self):
+        '''
+        you have to be logged in.
+        '''
+        self.post('fiction_outlines_api:location_listcreate', data=self.data, extra=self.extra)
+        self.response_403()
+
+    def test_authenticated_user(self):
+        before_create = Location.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.post('fiction_outlines_api:location_listcreate', data=self.data, extra=self.extra)
+            print(self.last_response.content)
+            self.response_201()
+            assert Location.objects.filter(user=self.user1).count() - before_create == 1
+            latest = Location.objects.latest('created')
+            assert 'Margaritaville' == latest.name
+            assert latest.tags.count() == 2
+
+
+class LocationDetailTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Tests for viewing location details.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+        self.response_403()
+
+    def test_object_permissions(self):
+        '''
+        Ensure an unauthorized user cannot access the items.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.get('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+                self.response_403()
+
+    def test_authorized_user(self):
+        '''
+        Verify that authorized user can access the item.
+        '''
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+            serialized_object = LocationSerializer(self.l1)
+            assert serialized_object.data == self.last_response.data
+
+
+class LocationUpdateView(FictionOutlineAbstractTestCase):
+    '''
+    Tests for location update functions, both PUT and PATCH.
+    '''
+    short_data = {'name': 'The seekrit place'}
+    long_data = {
+        'name': 'Tactical Blanket Fort',
+        'description': "So cozy, and safe.",
+        'tags': ['cuddles', ],
+        'series': []
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.long_data['series'].append(self.s1.pk)
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.put('fiction_outlines_api:location_item', location=self.l1.pk, data=self.long_data, extra=self.extra)
+        self.response_403()
+        assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+        self.patch('fiction_outlines_api:location_item', location=self.l1.pk, data=self.short_data, extra=self.extra)
+        self.response_403()
+        assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+
+    def test_object_permissions(self):
+        '''
+        Ensure that an unauthorized user cannot edit the object.
+        '''
+        for user in [self.user2, self.user2]:
+            with self.login(username=user.username):
+                self.put('fiction_outlines_api:location_item', location=self.l1.pk,
+                         data=self.long_data, extra=self.extra)
+                self.response_403()
+                assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+                self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                           data=self.short_data, extra=self.extra)
+                self.response_403()
+                assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+
+    def test_authorized_user(self):
+        '''
+        Ensure that an authorized user can make the necessary edits.
+        '''
+        with self.login(username=self.user1.username):
+            self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                       data=self.short_data, extra=self.extra)
+            self.response_200()
+            patched_l1 = Location.objects.get(pk=self.l1.pk)
+            assert patched_l1.name == 'The seekrit place'
+            assert not patched_l1.description
+            self.put('fiction_outlines_api:location_item', location=self.l1.pk,
+                     data=self.long_data, extra=self.extra)
+            self.response_200()
+            put_l1 = Location.objects.get(pk=self.l1.pk)
+            assert put_l1.name == 'Tactical Blanket Fort'
+            assert put_l1.description
+            assert put_l1.tags.count() == 1
+
+
+class LocationDeleteTest(FictionOutlineAbstractTestCase):
+    '''
+    Test location deletion.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+        self.response_403()
+        assert Location.objects.get(pk=self.l1.pk)
+
+    def test_unauthorized_users(self):
+        '''
+        Ensure unauthorized users cannot delete the object.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+                self.response_403()
+                assert Location.objects.get(pk=self.l1.pk)
+
+    def test_authorized_user(self):
+        '''
+        Test that an authroized user can delete as expected.
+        '''
+        with self.login(username=self.user1.username):
+            self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+            self.response_204()
+            with pytest.raises(ObjectDoesNotExist):
+                Location.objects.get(pk=self.l1.pk)
