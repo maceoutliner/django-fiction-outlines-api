@@ -2,11 +2,11 @@ import logging
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
 from test_plus import APITestCase
-from fiction_outlines.models import Series, Character, Location, Outline
+from fiction_outlines.models import Series, Character, Location, Outline, Arc
 # from fiction_outlines.models import Arc, ArcElementNode, StoryElementNode
 from fiction_outlines.models import CharacterInstance, LocationInstance
 from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
-from fiction_outlines_api.serializers import OutlineSerializer
+from fiction_outlines_api.serializers import OutlineSerializer, ArcSerializer
 
 logger = logging.getLogger('test_apiviews')
 logger.setLevel(logging.DEBUG)
@@ -873,6 +873,7 @@ class OutlineDetailTestCase(FictionOutlineAbstractTestCase):
             self.assertGoodView('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
             serialized_object = OutlineSerializer(self.o1)
             assert serialized_object.data == self.last_response.data
+            assert self.o1.arc_set.count() == len(self.last_response.data['arc_set'])
 
 
 class OutlineUpdateView(FictionOutlineAbstractTestCase):
@@ -980,3 +981,165 @@ class OutlineDeleteTest(FictionOutlineAbstractTestCase):
             self.response_204()
             with pytest.raises(ObjectDoesNotExist):
                 Outline.objects.get(pk=self.o1.pk)
+
+
+class ArcCreateTest(FictionOutlineAbstractTestCase):
+    '''
+    Test creating an arc.
+    '''
+    data = {
+        'name': 'Coming of age',
+        'mace_type': 'milieu',
+    }
+
+    def test_require_login(self):
+        '''
+        You have to be logged in.
+        '''
+        before_create = Arc.objects.filter(outline=self.o1).count()
+        self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+        self.response_403()
+        assert before_create == Arc.objects.filter(outline=self.o1).count()
+
+    def test_object_permissions(self):
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                before_create = Arc.objects.filter(outline=self.o1).count()
+                self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+                self.response_403()
+                assert before_create == Arc.objects.filter(outline=self.o1).count()
+
+    def test_authorized_user(self):
+        '''
+        Test creation of an arc from an authorized user.
+        '''
+        with self.login(username=self.user1.username):
+            before_create = Arc.objects.filter(outline=self.o1).count()
+            self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+            self.response_201()
+            assert Arc.objects.filter(outline=self.o1).count() - before_create == 1
+
+
+class ArcDetailTest(FictionOutlineAbstractTestCase):
+    '''
+    Test detail view for arc.
+    '''
+
+    def test_require_login(self):
+        '''
+        You have to be authenticated.
+        '''
+        self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+        self.response_403()
+
+    def test_object_permissions(self):
+        '''
+        Ensure that only users with the right permissions can access the object.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+                self.response_403()
+
+    def test_authorized_user(self):
+        '''
+        Test that authorized user can access the data as expected.
+        '''
+        with self.login(username=self.user1.username):
+            self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+            self.response_200()
+            assert ArcSerializer(self.arc1).data == self.last_response.data
+
+
+class ArcUpdateTest(FictionOutlineAbstractTestCase):
+    '''
+    Test updating of an Arc.
+    '''
+
+    def setUp(self):
+        super().setUp()
+        self.long_data = {
+            'name': 'Lost in tests',
+            'mace_type': 'milieu',
+        }
+        self.short_data = {
+            'name': 'HELLLLLLLLLLLO'
+        }
+
+    def test_requires_login(self):
+        '''
+        You have to be logged in.
+        '''
+        self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                 arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+        self.response_403()
+        assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+        self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                   arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+        self.response_403()
+        assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+
+    def test_object_permissions(self):
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                         arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+                self.response_403()
+                assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+                self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                           arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+                self.response_403()
+                assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+
+    def test_authorized_user(self):
+        '''
+        An authroized user can make changes.
+        '''
+        with self.login(username=self.user1.username):
+            self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                       arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+            self.response_200()
+            assert Arc.objects.get(pk=self.arc1.pk).name == 'HELLLLLLLLLLLO'
+            self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                     arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+            self.response_200()
+            updated_arc = Arc.objects.get(pk=self.arc1.pk)
+            assert updated_arc.name == 'Lost in tests'
+            assert updated_arc.mace_type == 'milieu'
+
+
+class ArcDeleteTest(FictionOutlineAbstractTestCase):
+    '''
+    Test arc deletion API calls
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                    arc=self.arc1.pk, extra=self.extra)
+        self.response_403()
+        assert Arc.objects.get(pk=self.arc1.pk)
+
+    def test_object_permissions(self):
+        '''
+        Ensure that only an authorized user can delete an arc.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                            arc=self.arc1.pk, extra=self.extra)
+                self.response_403()
+                assert Arc.objects.get(pk=self.arc1.pk)
+
+    def test_authorized_user(self):
+        '''
+        Test that authorized user can delete arc.
+        '''
+        with self.login(username=self.user1.username):
+            self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                        arc=self.arc1.pk, extra=self.extra)
+            self.response_204()
+            with pytest.raises(ObjectDoesNotExist):
+                Arc.objects.get(pk=self.arc1.pk)

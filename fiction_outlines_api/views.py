@@ -1,11 +1,12 @@
 from django.utils.translation import ugettext_lazy as _
-from rest_framework import generics
-from rest_framework import permissions
+from django.shortcuts import get_object_or_404
+from rest_framework import generics, status, permissions
+from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied
 from rest_framework_rules.mixins import PermissionRequiredMixin
-from fiction_outlines.models import Series, Character, Location, Outline
+from fiction_outlines.models import Series, Character, Location, Outline, Arc
 from .serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
-from .serializers import OutlineSerializer
+from .serializers import OutlineSerializer, ArcSerializer, ArcCreateSerializer
 import logging
 
 logger = logging.getLogger('api_views')
@@ -165,7 +166,13 @@ class OutlineList(generics.ListCreateAPIView):
         serializer.save(user=self.request.user)
 
     def get_queryset(self):
-        return Outline.objects.filter(user=self.request.user)
+        return Outline.objects.filter(
+            user=self.request.user
+        ).select_related('series').prefetch_related('tags',
+                                                    'arc_set',
+                                                    'storyelementnode_set',
+                                                    'characterinstance_set',
+                                                    'locationinstance_set')
 
 
 class OutlineDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
@@ -198,4 +205,62 @@ class OutlineDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVi
         return super().delete(request, *args, **kwargs)
 
     def get_queryset(self):
-        return Outline.objects.all()
+        return Outline.objects.all().select_related('series').prefetch_related('tags',
+                                                                               'arc_set',
+                                                                               'storyelementnode_set',
+                                                                               'characterinstance_set',
+                                                                               'locationinstance_set')
+
+
+class ArcCreateView(PermissionRequiredMixin, generics.CreateAPIView):
+    '''
+    API for creating arcs. Uses a custom serializer.
+    '''
+    serializer_class = ArcCreateSerializer
+    object_permission_required = 'fiction_outlines.edit_outline'
+    permission_required = 'fiction_outlines_api.valid_user'
+
+    def dispatch(self, request, *args, **kwargs):
+        self.outline = get_object_or_404(Outline, pk=kwargs['outline'])
+        return super().dispatch(request, *args, **kwargs)
+
+    def post(self, request, *args, **kwargs):
+        self.check_object_permissions(request, self.outline)
+        return super().post(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        self.object = self.outline.create_arc(mace_type=serializer.validated_data['mace_type'],
+                                              name=serializer.validated_data['name'])
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        result_serializer = ArcSerializer(self.object)
+        headers = self.get_success_headers(result_serializer.data)
+        return Response(result_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class ArcDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
+    '''
+    API for non-create object operations for Arc model.
+    '''
+    serializer_class = ArcSerializer
+    object_permission_required = 'fiction_outlines.view_arc'
+    permission_required = 'fiction_outlines_api.valid_user'
+    lookup_url_kwarg = 'arc'
+
+    def put(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_arc'
+        return super().put(request, *args, **kwargs)
+
+    def patch(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.edit_arc'
+        return super().patch(request, *args, **kwargs)
+
+    def delete(self, request, *args, **kwargs):
+        self.object_permission_required = 'fiction_outlines.delete_arc'
+        return super().delete(request, *args, **kwargs)
+
+    def get_queryset(self):
+        return Arc.objects.all()
