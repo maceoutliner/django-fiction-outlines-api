@@ -2,10 +2,11 @@ import logging
 import pytest
 from django.core.exceptions import ObjectDoesNotExist
 from test_plus import APITestCase
-from fiction_outlines.models import Series, Character, Location, Outline
+from fiction_outlines.models import Series, Character, Location, Outline, Arc
 # from fiction_outlines.models import Arc, ArcElementNode, StoryElementNode
 from fiction_outlines.models import CharacterInstance, LocationInstance
-from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer
+from fiction_outlines_api.serializers import SeriesSerializer, CharacterSerializer, LocationSerializer
+from fiction_outlines_api.serializers import OutlineSerializer, ArcSerializer
 
 logger = logging.getLogger('test_apiviews')
 logger.setLevel(logging.DEBUG)
@@ -326,6 +327,17 @@ class CharacterCreateTestCase(FictionOutlineAbstractTestCase):
         self.post('fiction_outlines_api:character_listcreate', data=self.data, extra=self.extra)
         self.response_403()
 
+    def test_invalid_series(self):
+        '''
+        Verify that an invalid series is rejected.
+        '''
+        before_create = Character.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.data['series'].append(self.s3.pk)
+            self.post('fiction_outlines_api:character_listcreate', data=self.data, extra=self.extra)
+            self.response_403()
+            assert before_create == Character.objects.filter(user=self.user1).count()
+
     def test_authenticated_user(self):
         before_create = Character.objects.filter(user=self.user1).count()
         with self.login(username=self.user1.username):
@@ -336,6 +348,19 @@ class CharacterCreateTestCase(FictionOutlineAbstractTestCase):
             latest = Character.objects.latest('created')
             assert 'Mary Sue' == latest.name
             assert latest.tags.count() == 2
+            data2 = {
+                'name': 'Just a guy',
+                'description': "You know?",
+                'tags': [],
+                'series': []
+            }
+            self.post('fiction_outlines_api:character_listcreate', data=data2, extra=self.extra)
+            self.response_201()
+            assert Character.objects.filter(user=self.user1).count() - before_create == 2
+            latest = Character.objects.latest('created')
+            assert latest.name == 'Just a guy'
+            assert not latest.tags.count()
+            assert not latest.series.count()
 
 
 class CharacterDetailTestCase(FictionOutlineAbstractTestCase):
@@ -383,7 +408,7 @@ class CharacterUpdateView(FictionOutlineAbstractTestCase):
 
     def setUp(self):
         super().setUp()
-        self.long_data['series'].append(self.s1.pk)
+        self.long_data['series'] = [self.s1.pk]
 
     def test_login_required(self):
         '''
@@ -411,6 +436,26 @@ class CharacterUpdateView(FictionOutlineAbstractTestCase):
                 self.response_403()
                 assert self.c1.name == Character.objects.get(pk=self.c1.pk).name
 
+    def test_invalid_series(self):
+        '''
+        Prevent a user from associating a character with a series for which they
+        don't have editing rights.
+        '''
+        with self.login(username=self.user1.username):
+            print("s1 = %s" % self.s1.pk)
+            print(self.long_data['series'])
+            self.long_data['series'].append(self.s3.pk)
+            print(self.long_data['series'])
+            self.put('fiction_outlines_api:character_item', character=self.c1.pk,
+                     data=self.long_data, extra=self.extra)
+            print(self.last_response.content)
+            self.response_403()
+            assert self.c1.series.count() == Character.objects.get(pk=self.c1.pk).series.count()
+            self.patch('fiction_outlines_api:character_item', character=self.c1.pk,
+                       data={'series': [self.s3.pk, ]}, extra=self.extra)
+            self.response_403()
+            assert self.c1.series.all()[0] == Character.objects.get(pk=self.c1.pk).series.all()[0]
+
     def test_authorized_user(self):
         '''
         Ensure that an authorized user can make the necessary edits.
@@ -429,6 +474,11 @@ class CharacterUpdateView(FictionOutlineAbstractTestCase):
             assert put_c1.name == 'Doctor Nick'
             assert put_c1.description
             assert put_c1.tags.count() == 2
+            self.patch('fiction_outlines_api:character_item', character=self.c1.pk,
+                       data={'series': []}, extra=self.extra)
+            self.response_200()
+            series_remove = Character.objects.get(pk=self.c1.pk)
+            assert not series_remove.series.count()
 
 
 class CharacterDeleteTest(FictionOutlineAbstractTestCase):
@@ -463,3 +513,633 @@ class CharacterDeleteTest(FictionOutlineAbstractTestCase):
             self.response_204()
             with pytest.raises(ObjectDoesNotExist):
                 Character.objects.get(pk=self.c1.pk)
+
+
+# Location Object tests
+
+
+class LocationListTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test case for location listing.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:location_listcreate')
+        self.response_403()
+
+    def test_authenticated_user(self):
+        '''
+        Ensure that users cannot see location that another owns.
+        '''
+        forbidden_character = LocationSerializer(Location.objects.filter(user=self.user1), many=True)
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.assertGoodView('fiction_outlines_api:location_listcreate')
+                results = self.last_response.data
+                for fs in forbidden_character.data:
+                    assert fs not in results
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:location_listcreate')
+            results = self.last_response.data
+            for fs in forbidden_character.data:
+                assert fs in results
+
+
+class LocationCreateTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test for API creation of characters.
+    '''
+
+    data = {
+        'name': 'Margaritaville',
+        'description': 'Missing a shaker of salt.',
+        'tags': ['your dad', 'parrothead'],
+        'series': []
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.data['series'] = [self.s1.pk, ]
+
+    def test_login_required(self):
+        '''
+        you have to be logged in.
+        '''
+        self.post('fiction_outlines_api:location_listcreate', data=self.data, extra=self.extra)
+        self.response_403()
+
+    def test_invalid_series(self):
+        '''
+        Verify that an invalid series is rejected.
+        '''
+        before_create = Location.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.data['series'].append(self.s3.pk)
+            self.post('fiction_outlines_api:location_listcreate', data=self.data, extra=self.extra)
+            self.response_403()
+            assert before_create == Location.objects.filter(user=self.user1).count()
+
+    def test_authenticated_user(self):
+        before_create = Location.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.post('fiction_outlines_api:location_listcreate', data=self.data, extra=self.extra)
+            print(self.last_response.content)
+            self.response_201()
+            assert Location.objects.filter(user=self.user1).count() - before_create == 1
+            latest = Location.objects.latest('created')
+            assert 'Margaritaville' == latest.name
+            assert latest.tags.count() == 2
+            data2 = {
+                'name': 'Temp location',
+                'description': "I have no series",
+                'tags': ['test', 'yup'],
+                'series': []
+            }
+            self.post('fiction_outlines_api:location_listcreate', data=data2, extra=self.extra)
+            print(self.last_response.content)
+            self.response_201()
+            assert Location.objects.filter(user=self.user1).count() - before_create == 2
+            latest = Location.objects.latest('created')
+            assert 'Temp location' == latest.name
+            assert latest.tags.count() == 2
+
+
+class LocationDetailTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Tests for viewing location details.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+        self.response_403()
+
+    def test_object_permissions(self):
+        '''
+        Ensure an unauthorized user cannot access the items.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.get('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+                self.response_403()
+
+    def test_authorized_user(self):
+        '''
+        Verify that authorized user can access the item.
+        '''
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+            serialized_object = LocationSerializer(self.l1)
+            assert serialized_object.data == self.last_response.data
+
+
+class LocationUpdateView(FictionOutlineAbstractTestCase):
+    '''
+    Tests for location update functions, both PUT and PATCH.
+    '''
+    short_data = {'name': 'The seekrit place'}
+    long_data = {
+        'name': 'Tactical Blanket Fort',
+        'description': "So cozy, and safe.",
+        'tags': ['cuddles', ],
+        'series': []
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.long_data['series'] = [self.s1.pk, ]
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.put('fiction_outlines_api:location_item', location=self.l1.pk, data=self.long_data, extra=self.extra)
+        self.response_403()
+        assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+        self.patch('fiction_outlines_api:location_item', location=self.l1.pk, data=self.short_data, extra=self.extra)
+        self.response_403()
+        assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+
+    def test_object_permissions(self):
+        '''
+        Ensure that an unauthorized user cannot edit the object.
+        '''
+        for user in [self.user2, self.user2]:
+            with self.login(username=user.username):
+                self.put('fiction_outlines_api:location_item', location=self.l1.pk,
+                         data=self.long_data, extra=self.extra)
+                self.response_403()
+                assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+                self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                           data=self.short_data, extra=self.extra)
+                self.response_403()
+                assert self.l1.name == Location.objects.get(pk=self.l1.pk).name
+
+    def test_invalid_series(self):
+        '''
+        Prevent a user from associating a location with a series for which they
+        don't have editing rights.
+        '''
+        with self.login(username=self.user1.username):
+            self.long_data['series'].append(self.s3.pk)
+            self.put('fiction_outlines_api:location_item', location=self.l1.pk,
+                     data=self.long_data, extra=self.extra)
+            self.response_403()
+            assert self.l1.series.count() == Location.objects.get(pk=self.l1.pk).series.count()
+            self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                       data={'series': [self.s3.pk, ]}, extra=self.extra)
+            self.response_403()
+            assert self.l1.series.count() == Location.objects.get(pk=self.l1.pk).series.count()
+
+    def test_authorized_user(self):
+        '''
+        Ensure that an authorized user can make the necessary edits.
+        '''
+        with self.login(username=self.user1.username):
+            self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                       data=self.short_data, extra=self.extra)
+            self.response_200()
+            patched_l1 = Location.objects.get(pk=self.l1.pk)
+            assert patched_l1.name == 'The seekrit place'
+            assert not patched_l1.description
+            self.put('fiction_outlines_api:location_item', location=self.l1.pk,
+                     data=self.long_data, extra=self.extra)
+            self.response_200()
+            put_l1 = Location.objects.get(pk=self.l1.pk)
+            assert put_l1.name == 'Tactical Blanket Fort'
+            assert put_l1.description
+            assert put_l1.tags.count() == 1
+            self.patch('fiction_outlines_api:location_item', location=self.l1.pk,
+                       data={'series': []}, extra=self.extra)
+            self.response_200()
+            assert not Location.objects.get(pk=self.l1.pk).series.count()
+
+
+class LocationDeleteTest(FictionOutlineAbstractTestCase):
+    '''
+    Test location deletion.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+        self.response_403()
+        assert Location.objects.get(pk=self.l1.pk)
+
+    def test_unauthorized_users(self):
+        '''
+        Ensure unauthorized users cannot delete the object.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+                self.response_403()
+                assert Location.objects.get(pk=self.l1.pk)
+
+    def test_authorized_user(self):
+        '''
+        Test that an authroized user can delete as expected.
+        '''
+        with self.login(username=self.user1.username):
+            self.delete('fiction_outlines_api:location_item', location=self.l1.pk, extra=self.extra)
+            self.response_204()
+            with pytest.raises(ObjectDoesNotExist):
+                Location.objects.get(pk=self.l1.pk)
+
+
+# Outline Object tests
+
+
+class OutlineListTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test case for outline listing.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:outline_listcreate')
+        self.response_403()
+
+    def test_authenticated_user(self):
+        '''
+        Ensure that users cannot see outline that another owns.
+        '''
+        forbidden_character = OutlineSerializer(Outline.objects.filter(user=self.user1), many=True)
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.assertGoodView('fiction_outlines_api:outline_listcreate')
+                results = self.last_response.data
+                for fs in forbidden_character.data:
+                    assert fs not in results
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:outline_listcreate')
+            results = self.last_response.data
+            for fs in forbidden_character.data:
+                assert fs in results
+
+
+class OutlineCreateTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Test for API creation of characters.
+    '''
+
+    data = {
+        'title': 'My Opus',
+        'description': 'Not the penguin. A work of art.',
+        'tags': ['antartica', ],
+        'series': None
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.data['series'] = self.s1.pk
+
+    def test_login_required(self):
+        '''
+        you have to be logged in.
+        '''
+        self.post('fiction_outlines_api:outline_listcreate', data=self.data, extra=self.extra)
+        self.response_403()
+
+    def test_invalid_series(self):
+        '''
+        Verify that an invalid series is rejected.
+        '''
+        before_create = Outline.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.data['series'] = self.s3.pk
+            self.post('fiction_outlines_api:outline_listcreate', data=self.data, extra=self.extra)
+            self.response_403()
+            assert before_create == Outline.objects.filter(user=self.user1).count()
+
+    def test_authenticated_user(self):
+        before_create = Outline.objects.filter(user=self.user1).count()
+        with self.login(username=self.user1.username):
+            self.post('fiction_outlines_api:outline_listcreate', data=self.data, extra=self.extra)
+            print(self.last_response.content)
+            self.response_201()
+            assert Outline.objects.filter(user=self.user1).count() - before_create == 1
+            latest = Outline.objects.latest('created')
+            assert 'My Opus' == latest.title
+            assert latest.tags.count() == 1
+            data2 = {
+                'title': 'One shot',
+                'description': 'An outline without a series',
+                'tags': ['fledgling', 'nonfranchise'],
+                'series': None
+            }
+            self.post('fiction_outlines_api:outline_listcreate', data=data2, extra=self.extra)
+            self.response_201()
+            assert Outline.objects.filter(user=self.user1).count() - before_create == 2
+            latest = Outline.objects.latest('created')
+            assert 'One shot' == latest.title
+
+
+class OutlineDetailTestCase(FictionOutlineAbstractTestCase):
+    '''
+    Tests for viewing outline details.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.get('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+        self.response_403()
+
+    def test_object_permissions(self):
+        '''
+        Ensure an unauthorized user cannot access the items.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.get('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+                self.response_403()
+
+    def test_authorized_user(self):
+        '''
+        Verify that authorized user can access the item.
+        '''
+        with self.login(username=self.user1.username):
+            self.assertGoodView('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+            serialized_object = OutlineSerializer(self.o1)
+            assert serialized_object.data == self.last_response.data
+            assert self.o1.arc_set.count() == len(self.last_response.data['arc_set'])
+
+
+class OutlineUpdateView(FictionOutlineAbstractTestCase):
+    '''
+    Tests for outline update functions, both PUT and PATCH.
+    '''
+    short_data = {'title': 'Dark Memoir'}
+    long_data = {
+        'title': 'Grandpa digs in snow',
+        'description': "Did you know that writing tests can be a *bit* boring?",
+        'tags': ['clowns', 'no sleep'],
+        'series': None,
+    }
+
+    def setUp(self):
+        super().setUp()
+        self.long_data['series'] = self.s2.pk
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.put('fiction_outlines_api:outline_item', outline=self.o1.pk, data=self.long_data, extra=self.extra)
+        self.response_403()
+        assert self.o1.title == Outline.objects.get(pk=self.o1.pk).title
+        self.patch('fiction_outlines_api:outline_item', outline=self.o1.pk, data=self.short_data, extra=self.extra)
+        self.response_403()
+        assert self.o1.title == Outline.objects.get(pk=self.o1.pk).title
+
+    def test_object_permissions(self):
+        '''
+        Ensure that an unauthorized user cannot edit the object.
+        '''
+        for user in [self.user2, self.user2]:
+            with self.login(username=user.username):
+                self.put('fiction_outlines_api:outline_item', outline=self.o1.pk,
+                         data=self.long_data, extra=self.extra)
+                self.response_403()
+                assert self.o1.title == Outline.objects.get(pk=self.o1.pk).title
+                self.patch('fiction_outlines_api:outline_item', outline=self.o1.pk,
+                           data=self.short_data, extra=self.extra)
+                self.response_403()
+                assert self.o1.title == Outline.objects.get(pk=self.o1.pk).title
+
+    def test_invalid_series(self):
+        '''
+        Verify that an invalid series is rejected.
+        '''
+        with self.login(username=self.user1.username):
+            self.long_data['series'] = self.s3.pk
+            self.put('fiction_outlines_api:outline_item', outline=self.o1.pk,
+                     data=self.long_data, extra=self.extra)
+            self.response_403()
+            assert self.o1.series == Outline.objects.get(pk=self.o1.pk).series
+
+    def test_authorized_user(self):
+        '''
+        Ensure that an authorized user can make the necessary edits.
+        '''
+        with self.login(username=self.user1.username):
+            self.patch('fiction_outlines_api:outline_item', outline=self.o1.pk,
+                       data=self.short_data, extra=self.extra)
+            self.response_200()
+            patched_o1 = Outline.objects.get(pk=self.o1.pk)
+            assert patched_o1.title == 'Dark Memoir'
+            assert not patched_o1.description
+            self.put('fiction_outlines_api:outline_item', outline=self.o1.pk,
+                     data=self.long_data, extra=self.extra)
+            self.response_200()
+            put_o1 = Outline.objects.get(pk=self.o1.pk)
+            assert put_o1.title == 'Grandpa digs in snow'
+            assert put_o1.description
+            assert put_o1.tags.count() == 2
+
+
+class OutlineDeleteTest(FictionOutlineAbstractTestCase):
+    '''
+    Test outline deletion.
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.delete('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+        self.response_403()
+        assert Outline.objects.get(pk=self.o1.pk)
+
+    def test_unauthorized_users(self):
+        '''
+        Ensure unauthorized users cannot delete the object.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.delete('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+                self.response_403()
+                assert Outline.objects.get(pk=self.o1.pk)
+
+    def test_authorized_user(self):
+        '''
+        Test that an authroized user can delete as expected.
+        '''
+        with self.login(username=self.user1.username):
+            self.delete('fiction_outlines_api:outline_item', outline=self.o1.pk, extra=self.extra)
+            self.response_204()
+            with pytest.raises(ObjectDoesNotExist):
+                Outline.objects.get(pk=self.o1.pk)
+
+
+class ArcCreateTest(FictionOutlineAbstractTestCase):
+    '''
+    Test creating an arc.
+    '''
+    data = {
+        'name': 'Coming of age',
+        'mace_type': 'milieu',
+    }
+
+    def test_require_login(self):
+        '''
+        You have to be logged in.
+        '''
+        before_create = Arc.objects.filter(outline=self.o1).count()
+        self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+        self.response_403()
+        assert before_create == Arc.objects.filter(outline=self.o1).count()
+
+    def test_object_permissions(self):
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                before_create = Arc.objects.filter(outline=self.o1).count()
+                self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+                self.response_403()
+                assert before_create == Arc.objects.filter(outline=self.o1).count()
+
+    def test_authorized_user(self):
+        '''
+        Test creation of an arc from an authorized user.
+        '''
+        with self.login(username=self.user1.username):
+            before_create = Arc.objects.filter(outline=self.o1).count()
+            self.post('fiction_outlines_api:arc_create', outline=self.o1.pk, data=self.data, extra=self.extra)
+            self.response_201()
+            assert Arc.objects.filter(outline=self.o1).count() - before_create == 1
+
+
+class ArcDetailTest(FictionOutlineAbstractTestCase):
+    '''
+    Test detail view for arc.
+    '''
+
+    def test_require_login(self):
+        '''
+        You have to be authenticated.
+        '''
+        self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+        self.response_403()
+
+    def test_object_permissions(self):
+        '''
+        Ensure that only users with the right permissions can access the object.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+                self.response_403()
+
+    def test_authorized_user(self):
+        '''
+        Test that authorized user can access the data as expected.
+        '''
+        with self.login(username=self.user1.username):
+            self.get('fiction_outlines_api:arc_item', outline=self.o1.pk, arc=self.arc1.pk, extra=self.extra)
+            self.response_200()
+            assert ArcSerializer(self.arc1).data == self.last_response.data
+
+
+class ArcUpdateTest(FictionOutlineAbstractTestCase):
+    '''
+    Test updating of an Arc.
+    '''
+
+    def setUp(self):
+        super().setUp()
+        self.long_data = {
+            'name': 'Lost in tests',
+            'mace_type': 'milieu',
+        }
+        self.short_data = {
+            'name': 'HELLLLLLLLLLLO'
+        }
+
+    def test_requires_login(self):
+        '''
+        You have to be logged in.
+        '''
+        self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                 arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+        self.response_403()
+        assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+        self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                   arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+        self.response_403()
+        assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+
+    def test_object_permissions(self):
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                         arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+                self.response_403()
+                assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+                self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                           arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+                self.response_403()
+                assert self.arc1.name == Arc.objects.get(pk=self.arc1.pk).name
+
+    def test_authorized_user(self):
+        '''
+        An authroized user can make changes.
+        '''
+        with self.login(username=self.user1.username):
+            self.patch('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                       arc=self.arc1.pk, data=self.short_data, extra=self.extra)
+            self.response_200()
+            assert Arc.objects.get(pk=self.arc1.pk).name == 'HELLLLLLLLLLLO'
+            self.put('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                     arc=self.arc1.pk, data=self.long_data, extra=self.extra)
+            self.response_200()
+            updated_arc = Arc.objects.get(pk=self.arc1.pk)
+            assert updated_arc.name == 'Lost in tests'
+            assert updated_arc.mace_type == 'milieu'
+
+
+class ArcDeleteTest(FictionOutlineAbstractTestCase):
+    '''
+    Test arc deletion API calls
+    '''
+
+    def test_login_required(self):
+        '''
+        You have to be logged in.
+        '''
+        self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                    arc=self.arc1.pk, extra=self.extra)
+        self.response_403()
+        assert Arc.objects.get(pk=self.arc1.pk)
+
+    def test_object_permissions(self):
+        '''
+        Ensure that only an authorized user can delete an arc.
+        '''
+        for user in [self.user2, self.user3]:
+            with self.login(username=user.username):
+                self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                            arc=self.arc1.pk, extra=self.extra)
+                self.response_403()
+                assert Arc.objects.get(pk=self.arc1.pk)
+
+    def test_authorized_user(self):
+        '''
+        Test that authorized user can delete arc.
+        '''
+        with self.login(username=self.user1.username):
+            self.delete('fiction_outlines_api:arc_item', outline=self.o1.pk,
+                        arc=self.arc1.pk, extra=self.extra)
+            self.response_204()
+            with pytest.raises(ObjectDoesNotExist):
+                Arc.objects.get(pk=self.arc1.pk)
