@@ -1,1 +1,2 @@
 django>=2.0
+-e git+https://github.com/maceoutliner/django-taggit-serializer.git#egg=taggit_serializer
