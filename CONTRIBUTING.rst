@@ -3,7 +3,7 @@ Contributing
 ============
 
 Contributions are welcome, and they are greatly appreciated! Every
-little bit helps, and credit will always be given. 
+little bit helps, and credit will always be given.
 
 You can contribute in many ways:
 
@@ -36,7 +36,7 @@ is open to whoever wants to implement it.
 Write Documentation
 ~~~~~~~~~~~~~~~~~~~
 
-Django Fiction Outlines could always use more documentation, whether as part of the 
+Django Fiction Outlines API could always use more documentation, whether as part of the
 official Django Fiction Outlines docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
@@ -67,6 +67,10 @@ Ready to contribute? Here's how to set up ``django-fiction-outlines-api`` for lo
     $ cd django-fiction-outlines-api/
     $ pipenv install --dev
 
+Alternatively::
+
+    $ pip install test_requirements.txt
+
 4. Create a branch for local development::
 
     $ git checkout -b name-of-your-bugfix-or-feature
@@ -78,13 +82,12 @@ Ready to contribute? Here's how to set up ``django-fiction-outlines-api`` for lo
    .. _this style guide: https://github.com/slashsBin/styleguide-git-commit-message
 
 5. When you're done making changes, check that your changes pass flake8 and the
-   tests, including testing other Python versions with tox::
+   tests.::
 
         $ flake8 fiction_outlines_api tests
         $ pytest
-        $ tox
 
-   To get flake8 and tox, just pip install them into your virtualenv. 
+   To get flake8 and tox, just pip install them into your virtualenv.
 
 6. Commit your changes and push your branch to GitHub::
 
@@ -103,10 +106,9 @@ Before you submit a pull request, check that it meets these guidelines:
 2. If the pull request adds functionality, the docs should be updated. Put
    your new functionality into a function with a docstring, and add the
    feature to the list in README.rst.
-3. The pull request should work for Python for Python 3.6 and up. Check 
+3. The pull request should work for Python for Python 3.6 and up. Check
    https://travis-ci.org/maceoutliner/django-fiction-outlines-api/pull_requests
    and make sure that the tests pass for all supported Python versions.
    (Don't submit issues or PR to enable Python 2 support. They will not
    be merged.)
 4. Where appropriate, squash your commits using `git rebase -i`.
-
