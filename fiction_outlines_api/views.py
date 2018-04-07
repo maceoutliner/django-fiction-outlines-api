@@ -21,6 +21,11 @@ logger = logging.getLogger('fiction-outlines-api')
 class SeriesList(generics.ListCreateAPIView):
     '''
     API view for series list.
+
+    Provides HTTP methods:
+
+    - GET: Retrive :class:`fiction_outlines.models.Series` objects for the current user.
+    - POST: Accepts data compatible with a :class:`fiction_outlines_api.serializers.SeriesSerializer`
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = SeriesSerializer
@@ -34,7 +39,15 @@ class SeriesList(generics.ListCreateAPIView):
 
 class SeriesDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
-    Retrieves details of a series.
+    Retrieves details of a series, and enables editing of the object.
+
+    Provides HTTP methods:
+
+    - GET: retrieve the individual object.
+    - PUT: Update the object. Takes data compatible with a :class:`fiction_outlines_api.serializers.SeriesSerializer`
+    - PATCH: Update the object. Takes partial data compatible with keys from
+      :class:`fiction_outlines_api.serializers.SeriesSerializer`
+    - DELETE: Delete the object.
     '''
     serializer_class = SeriesSerializer
     object_permission_required = 'fiction_outlines.view_series'
@@ -57,6 +70,12 @@ class SeriesDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVie
 class CharacterList(generics.ListCreateAPIView):
     '''
     API view for character list
+
+    Provies HTTP methods:
+
+    - GET: Retrive a list of :class:`fiction_outlines.models.Character` objects for the current user.
+    - POST: Create a character. Takes data compatible with
+      :class:`fiction_outlines_api.serializers.CharacterSerializer`
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = CharacterSerializer
@@ -75,6 +94,13 @@ class CharacterList(generics.ListCreateAPIView):
 class CharacterDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
     API view for all single item character operations besides create.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual character record.
+    - PUT: Update a character with data compatible with a :class:`fiction_outlines_api.serializers.CharacterSerializer`
+    - PATCH: Update a character with partial data that corresponds to keys in
+      :class:`fiction_outlines_api.serializers.CharacterSerializer`
     '''
     serializer_class = CharacterSerializer
     object_permission_required = 'fiction_outlines.view_character'
@@ -83,6 +109,11 @@ class CharacterDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPI
     lookup_url_kwarg = 'character'
 
     def perform_update(self, serializer):
+        '''
+        Validates that if a series is specified, that the user has rights to it as well.
+
+        :raises PermissionDenied: if the user does not have the required permissions.
+        '''
         if 'series' in serializer.validated_data.keys():
             if serializer.validated_data['series']:
                 for series in serializer.validated_data['series']:
@@ -110,6 +141,10 @@ class CharacterInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequire
     '''
     API view for creating a character instance. Expects kwargs in url for character and
     outline. All other data comes from the serializer.
+
+    Provides HTTP methods:
+
+    - POST: Accepts data compatible with a :class:`fiction_outlines_api.serializers.CharacterInstanceSerializer`
     '''
     serializer_class = CharacterInstanceSerializer
     permission_required = 'fiction_outlines_api.valid_user'
@@ -121,6 +156,11 @@ class CharacterInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequire
     }
 
     def perform_create(self, serializer):
+        '''
+        Attempts the actual creation of the instance.
+
+        :raises ParseError: if the character is already associated with the outline.
+        '''
         try:
             serializer.save(character=self.permission_object_dict['character'],
                             outline=self.permission_object_dict['outline'])
@@ -132,6 +172,14 @@ class CharacterInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequire
 class CharacterInstanceDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
     API view for non-creation actions on CharacterInstance objects.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a
+      :class:`fiction_outlines_api.serializers.CharacterInstanceSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
     '''
     serializer_class = CharacterInstanceSerializer
     object_permission_required = 'fiction_outlines.view_character_instance'
@@ -157,11 +205,21 @@ class CharacterInstanceDetailView(PermissionRequiredMixin, generics.RetrieveUpda
 class LocationList(generics.ListCreateAPIView):
     '''
     API view for location list
+
+    Provides HTTP methods:
+
+    - GET: Retrieve a list of Locations for the current user.
+    - POST: Create a location with data compatibile with :class:`fiction_outlines_api.serializers.LocationSerializer`
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = LocationSerializer
 
     def perform_create(self, serializer):
+        '''
+        Creates the object. If a series is specified, verify the user has rights to it as well.
+
+        :raises PermissionDenied: if the user lackst he required permissions.
+        '''
         if serializer.validated_data['series']:
             for series in serializer.validated_data['series']:
                 if not self.request.user.has_perm('fiction_outlines.edit_series', series):
@@ -175,6 +233,13 @@ class LocationList(generics.ListCreateAPIView):
 class LocationDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
     API view for all single item location operations besides create.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a :class:`fiction_outlines_api.serializers.LocationSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
     '''
     serializer_class = LocationSerializer
     object_permission_required = 'fiction_outlines.view_location'
@@ -183,6 +248,11 @@ class LocationDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIV
     lookup_url_kwarg = 'location'
 
     def perform_update(self, serializer):
+        '''
+        Performs update actions. If a series is specified, it verifies the user has rights to it as well.
+
+        :raises PermissionDenied: if the user does not have the correct permissions.
+        '''
         if 'series' in serializer.validated_data.keys():
             if serializer.validated_data['series']:
                 for series in serializer.validated_data['series']:
@@ -210,6 +280,10 @@ class LocationInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequired
     '''
     API view for creating a location instance. Expects kwargs in url for location and
     outline. All other data comes from the serializer.
+
+    Provides HTTP method:
+
+    - POST: accepts data compatible with :class:`fiction_outlines_api.serializers.LocationInstanceSerializer`
     '''
     serializer_class = LocationInstanceSerializer
     permission_required = 'fiction_outlines_api.valid_user'
@@ -221,6 +295,11 @@ class LocationInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequired
     }
 
     def perform_create(self, serializer):
+        '''
+        Creates the location instance.
+
+        :raises ParseError: if the location is already associated with the outline.
+        '''
         try:
             serializer.save(location=self.permission_object_dict['location'],
                             outline=self.permission_object_dict['outline'])
@@ -231,7 +310,13 @@ class LocationInstanceCreateView(MultiObjectPermissionsMixin, PermissionRequired
 
 class LocationInstanceDetailView(PermissionRequiredMixin, generics.RetrieveDestroyAPIView):
     '''
-    API view for non-creation actions on LocationInstance objects.
+    API view for non-creation actions on LocationInstance objects. As locations instances don't have
+    editable data, only retrieval and destroy are supported at this time.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - DELETE: Delete the object.
     '''
     serializer_class = LocationInstanceSerializer
     object_permission_required = 'fiction_outlines.view_location_instance'
@@ -248,12 +333,23 @@ class LocationInstanceDetailView(PermissionRequiredMixin, generics.RetrieveDestr
 
 class OutlineList(generics.ListCreateAPIView):
     '''
-    API view for location list
+    API view for Outline list
+
+    Provides HTTP methods:
+
+    - GET: Retrived a list of outlines for the current user.
+    - POST: Create a new Outline. Accepts data compatible with
+      :class:`fiction_outlines_api.serializers.OutlineSerializer`
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = OutlineSerializer
 
     def perform_create(self, serializer):
+        '''
+        Creates the object. If a series is specified, it verfies that the user has rights to it as well.
+
+        :raises PermissionDenied: if the user does not have the required permissions.
+        '''
         if serializer.validated_data['series']:
             if not self.request.user.has_perm('fiction_outlines.edit_series', serializer.validated_data['series']):
                 raise PermissionDenied(_('You do not have editing rights for the specified series.'))
@@ -271,7 +367,14 @@ class OutlineList(generics.ListCreateAPIView):
 
 class OutlineDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
-    API view for all single item location operations besides create.
+    API view for all single item outline operations besides create.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a :class:`fiction_outlines_api.serializers.OutlineSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
     '''
     serializer_class = OutlineSerializer
     object_permission_required = 'fiction_outlines.view_outline'
@@ -280,6 +383,11 @@ class OutlineDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVi
     lookup_url_kwarg = 'outline'
 
     def perform_update(self, serializer):
+        '''
+        Updates the object. If a series is specified, it verifies the user has permissions for that object as well.
+
+        :raises PermissionDenied: if the user lacks the needed permissions.
+        '''
         if 'series' in serializer.validated_data.keys():
             if (serializer.validated_data['series'] and
                 not self.request.user.has_perm('fiction_outlines.edit_series', serializer.validated_data['series'])):
@@ -308,7 +416,12 @@ class OutlineDetail(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVi
 
 class ArcCreateView(PermissionRequiredMixin, generics.CreateAPIView):
     '''
-    API for creating arcs. Uses a custom serializer.
+    API for creating arcs. Uses a custom serializer, as Arcs are generated via special methods inside
+    a transaction.
+
+    Provides HTTP method:
+
+    - POST: Accepts data compatible with :class:`fiction_outlines_api.serializers.ArcCreateSerializer`
     '''
     serializer_class = ArcCreateSerializer
     object_permission_required = 'fiction_outlines.edit_outline'
@@ -338,6 +451,13 @@ class ArcCreateView(PermissionRequiredMixin, generics.CreateAPIView):
 class ArcDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
     API for non-create object operations for Arc model.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a :class:`fiction_outlines_api.serializers.ArcSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
     '''
     serializer_class = ArcSerializer
     object_permission_required = 'fiction_outlines.view_arc'
@@ -362,7 +482,16 @@ class ArcDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIVi
 
 class ArcNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
-    API for viewing a tree of arc nodes.
+    API for viewing a tree of :class:`fiction_outlines.models.ArcElementNode`, as well as some basic updates.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a
+      :class:`fiction_outlines_api.serializers.ArcElementNodeSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
+
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ArcElementNodeSerializer
@@ -390,6 +519,13 @@ class ArcNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyA
         return super().delete(request, *args, **kwargs)
 
     def destroy(self, request, *args, **kwargs):
+        '''
+        Destroys the object, but first checks that the element doesn't represent either the
+        Hook or Resolution of an Arc. These types may not be deleted unless you are deleting the
+        whole arc.
+
+        :raises ParseError: if the object represents the Hook or Resolution.
+        '''
         instance = self.get_object()
         if instance.arc_element_type in ['mile_hook', 'mile_reso']:
             raise ParseError('You cannot delete the hook or resolution of an arc.')
@@ -402,7 +538,8 @@ class ArcNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyA
 
 class ArcNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.CreateAPIView):
     '''
-    API view for add_child and add_sibling
+    API view for add_child and add_sibling. You can only create tree objects in relation to
+    another object in the tree. See :class:`mixins.NodeAddMixin` for more details.
     '''
     serializer_class = ArcElementNodeSerializer
     permission_required = 'fiction_outlines_api.valid_user'
@@ -416,7 +553,7 @@ class ArcNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.CreateAP
 
 class ArcNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.GenericAPIView):
     '''
-    View for moving arc nodes.
+    View for moving arc nodes. See :class:`mixins.NodeMoveMixin` for more details.
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = ArcElementNodeSerializer
@@ -431,7 +568,7 @@ class ArcNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.GenericAP
 
 class StoryNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.GenericAPIView):
     '''
-    View for moving story nodes.
+    View for moving story nodes. See :class:`mixins.NodeMoveMixin` for more details.
     '''
     serializer_class = StoryElementNodeSerializer
     permission_required = 'fiction_outlines_api.valid_user'
@@ -445,7 +582,8 @@ class StoryNodeMoveView(PermissionRequiredMixin, NodeMoveMixin, generics.Generic
 
 class StoryNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.CreateAPIView):
     '''
-    View for adding story nodes.
+    View for adding story nodes. You can only create tree elements in relation to other objects in
+    the same tree. See :class:`mixins.NodeAddMixin` for more details.
     '''
     serializer_class = StoryElementNodeSerializer
     permission_required = 'fiction_outlines_api.valid_user'
@@ -459,7 +597,15 @@ class StoryNodeCreateView(PermissionRequiredMixin, NodeAddMixin, generics.Create
 
 class StoryNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestroyAPIView):
     '''
-    API for viewing a tree of story nodes.
+    API for viewing and editing a story node.
+
+    Provides HTTP methods:
+
+    - GET: Retrieve an individual object.
+    - PUT: Update the object with data compatible with a
+      :class:`fiction_outlines_api.serializers.StoryElementNodeSerializer`
+    - PATCH: Update the object with partial data that corresponds to keys in the serializer.
+    - DELETE: Delete the object.
     '''
     permission_classes = (permissions.IsAuthenticated,)
     serializer_class = StoryElementNodeSerializer
@@ -468,6 +614,12 @@ class StoryNodeDetailView(PermissionRequiredMixin, generics.RetrieveUpdateDestro
     lookup_url_kwarg = 'storynode'
 
     def update(self, request, *args, **kwargs):
+        '''
+        Updates the node, after first running it through validation to ensure it won't violate the tree
+        structure.
+
+        :raises ParseError: if the edit would violate the tree structure.
+        '''
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if 'story_element_type' in serializer.validated_data.keys():

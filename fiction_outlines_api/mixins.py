@@ -30,6 +30,18 @@ class MultiObjectPermissionsMixin(object):
     object_class_permission_dict = {}
 
     def get_permission_object(self, pkval, objectpermission, obj_class):
+        '''
+        Fetches the permission object and checks it agains the permission specified.
+
+        :param pkval:
+            The pk value to use in the search.
+        :param objectpermission:
+            A permission based on the :module:`rules` format, e.g. "app_name.permission_name"
+        :param obj_class:
+            The class of the object we are searching for.
+
+        :returns: The found object.
+        '''
         queryset = self.filter_queryset(self.get_object_permission_queryset(obj_class))
         filter_kwargs = {self.lookup_field: pkval}
         obj = get_object_or_404(queryset, **filter_kwargs)
@@ -37,6 +49,18 @@ class MultiObjectPermissionsMixin(object):
         return obj
 
     def check_object_permissions(self, request, perm, obj):
+        '''
+        Verifies the object permissions are valid for the current user.
+
+        :param request:
+             The request object. The user is retrieved from here.
+        :param perm:
+             The permission to validate against (in :module:`rules`) format.
+        :param obj:
+             The object to evaluate.
+
+        :raise PermissionDenied: when user lacks the required permission.
+        '''
         if not request.user.has_perm(perm, obj):
             raise PermissionDenied
         return super().check_object_permissions(request, obj)
@@ -56,16 +80,38 @@ class MultiObjectPermissionsMixin(object):
         return super().post(request, *args, **kwargs)
 
     def get_object_permission_queryset(self, obj_class):
+        '''
+        Fetches the queryset for the permission object.
+
+        :param obj_class:
+            Model class of the object to retrieve.
+
+        :returns: A django queryset for the class.
+        '''
         return obj_class.objects.all()
 
 
 class NodeAddMixin(object):
     '''
-    API Mixin for add_sibling and add_child commands
+    API Mixin for add_sibling and add_child commands.
+
+    :attribute fields_required_for_add:
+        A tuple of fields that should be required in the submitted serializer in order to create the object.
     '''
     fields_required_for_add = ('description',)  # Declare in more detail in subclass.
 
     def post(self, request, *args, **kwargs):
+        '''
+        Parses kwargs and kicks off evaluation process.
+
+        :keyword action:
+            Either ``add_child`` or ``add_sibling``.
+        :keyword position:
+            If ``add_sibling`` this is required, and must be a value from :data:POSITIONS.
+            If action is ``add_child`` this is ignored.
+
+        :raise Http404: if action is not a one of the two permitted options.
+        '''
         self.source_node = self.get_object()
         self.action = kwargs['action']
         if self.action not in ['add_child', 'add_sibling']:
@@ -80,6 +126,11 @@ class NodeAddMixin(object):
         return super().post(request, *args, **kwargs)
 
     def create(self, request, *args, **kwargs):
+        '''
+        Does the final validation of submitted data and if valid proceeds with creation.
+
+        :raises NotImplementedError: if client attempts to specify many-to-many relationship at creation.
+        '''
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         if serializer.validated_data['assoc_characters'] or serializer.validated_data['assoc_locations']:
@@ -89,6 +140,16 @@ class NodeAddMixin(object):
         return response.Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
+        '''
+        The actual creation part.
+
+        :param serializer:
+            The serializer object representing the object to be created.
+
+        :raises ValidationError: if the data submitted is invalid or violates the structure of the tree.
+
+        :returns: A serializer representing the created object.
+        '''
         kwarg_dict = {}
         for field in self.fields_required_for_add:
             kwarg_dict[field] = serializer.validated_data[field]
@@ -122,6 +183,19 @@ class NodeMoveMixin(object):
     related_key = None  # Specify in subclass
 
     def get_object(self, pkval):
+        '''
+        Fetches an individual object and verifies that the user has the appropriate
+        permissions to move it.
+
+        :param pkval:
+             The primary key value to use in the search.
+
+        :returns: Object
+
+        :raises Http404: if object cannot be found
+
+        :raises PermissionDenied: if user does not have the required permissions.
+        '''
         logger.debug('generating queryset')
         queryset = self.filter_queryset(self.get_queryset())
         filter_kwargs = {self.lookup_field: pkval}
@@ -131,6 +205,15 @@ class NodeMoveMixin(object):
         return obj
 
     def perform_move(self):
+        '''
+        Validates the proposed move, and if valid, will manipulate the tree accordingly.
+
+        :raises ValidationError: if the move request violates tree structure.
+
+        :raises TreeUnavailable: if the DB tree is out of available nodes.
+
+        :returns: A serializer representing the updated node.
+        '''
         logger.debug('Comparing related values from %s' % self.related_key)
         if getattr(self.source_node, self.related_key) != getattr(self.target_node, self.related_key):
             logger.debug('%s and %s do NOT match.' % (getattr(self.source_node, self.related_key),

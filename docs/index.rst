@@ -11,9 +11,12 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
-   readme
+   introduction
    installation
    usage
+   modules
    contributing
+   code_of_conduct
+   license
    authors
    history
