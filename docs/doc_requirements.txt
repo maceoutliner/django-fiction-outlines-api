@@ -3,3 +3,4 @@ django>=2.0
 django-fiction-outlines
 djangorestframework
 django-rest-framework-rules
+-r ../test_requirements.txt
