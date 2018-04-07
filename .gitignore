@@ -19,10 +19,6 @@ develop-eggs
 lib
 lib64
 
-# Generated docs
-docs/fiction_outlines_api.rst
-docs/modules.rst
-
 # Installer logs
 pip-log.txt
 
