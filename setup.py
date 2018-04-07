@@ -79,7 +79,7 @@ setup(
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
-        'Programming Lanuage :: Python :: 3',
+#        'Programming Lanuage :: Python :: 3',
         'Programming Language :: Python :: 3.6',
     ],
 )
