@@ -9,9 +9,7 @@ from rest_framework import response, status
 from fiction_outlines.signals import tree_manipulation
 from fiction_outlines.models import IntegrityError
 from .exceptions import TreeUnavailable
-from fiction_outlines.models import ArcElementNode
-from fiction_outlines.models import IntegrityError, ArcGenerationError
-from .exceptions import TreeUnavailable
+from fiction_outlines.models import ArcGenerationError
 
 
 POSITIONS = ('first-child', 'last-child', 'first-sibling', 'last-sibling', 'left', 'right')
