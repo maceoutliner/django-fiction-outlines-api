@@ -5,16 +5,16 @@
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
-            "implementation_version": "3.6.4",
+            "implementation_version": "3.6.1",
             "os_name": "posix",
             "platform_machine": "x86_64",
             "platform_python_implementation": "CPython",
-            "platform_release": "17.5.0",
-            "platform_system": "Darwin",
-            "platform_version": "Darwin Kernel Version 17.5.0: Mon Mar  5 22:24:32 PST 2018; root:xnu-4570.51.1~1/RELEASE_X86_64",
-            "python_full_version": "3.6.4",
+            "platform_release": "4.14.12-gentoo",
+            "platform_system": "Linux",
+            "platform_version": "#3 SMP Tue Jan 9 11:57:47 EST 2018",
+            "python_full_version": "3.6.1",
             "python_version": "3.6",
-            "sys_platform": "darwin"
+            "sys_platform": "linux"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -71,9 +71,9 @@
         },
         "django-fiction-outlines": {
             "hashes": [
-                "sha256:4905afa7c8b5d25a7890bd4cd98eb30ced82ac31d1e0834293d3661e804126de"
+                "sha256:72c090853a8d5a5e0a005f99c9ef4a5b93134818d8745bd6196ed00adbeaa411"
             ],
-            "version": "==0.1.2"
+            "version": "==0.1.4"
         },
         "django-filter": {
             "hashes": [
@@ -103,11 +103,6 @@
             ],
             "version": "==0.22.2"
         },
-        "django-taggit-serializer": {
-            "editable": true,
-            "git": "https://github.com/maceoutliner/django-taggit-serializer.git",
-            "ref": "37aaf718e85e7a1a5afc034ea0ca3e511b881731"
-        },
         "django-treebeard": {
             "hashes": [
                 "sha256:474275b1de849eba8ead8e197edb5f6c2c835598eafa1ddfe3e3166a3e6c2d1f"
@@ -116,10 +111,10 @@
         },
         "djangorestframework": {
             "hashes": [
-                "sha256:bb9d74756a6b157bfb2e395b200b11f87c837f45f5e097b2308ed7a526e7dcbe",
-                "sha256:be299fb3f289e22ddca0ff88294924cd06aa3bcfa5043f72792d2a18d96dabe8"
+                "sha256:c375e4f95a3a64fccac412e36fb42ba36881e52313ec021ef410b40f67cddca4",
+                "sha256:b6714c3e4b0f8d524f193c91ecf5f5450092c2145439ac2769711f7eba89a9d9"
             ],
-            "version": "==3.8.0"
+            "version": "==3.8.2"
         },
         "idna": {
             "hashes": [
@@ -521,10 +516,10 @@
         },
         "sphinx-rtd-theme": {
             "hashes": [
-                "sha256:62ee4752716e698bad7de8a18906f42d33664128eea06c46b718fc7fbd1a9f5c",
-                "sha256:2df74b8ff6fae6965c527e97cca6c6c944886aae474b490e17f92adfbe843417"
+                "sha256:220dbf14814001c6475f0c6c25ac4129a18fb5e3681251a7c6ffb1646da5cc30",
+                "sha256:665135dfbdf8f1d218442458a18cf266444354b8c98eed93d1543f7e701cfdba"
             ],
-            "version": "==0.2.4"
+            "version": "==0.3.0"
         },
         "sphinxcontrib-websupport": {
             "hashes": [
