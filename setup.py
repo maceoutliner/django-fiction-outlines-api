@@ -59,7 +59,7 @@ setup(
     install_requires=[
         'django-fiction-outlines',
         'django-rest-framework-rules',
-        'django-rest-framework',
+        'djangorestframework',
         'coreapi',
         'django-filter',
         'Markdown',
