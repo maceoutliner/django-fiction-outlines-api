@@ -5,16 +5,16 @@
         },
         "host-environment-markers": {
             "implementation_name": "cpython",
-            "implementation_version": "3.6.1",
+            "implementation_version": "3.6.4",
             "os_name": "posix",
             "platform_machine": "x86_64",
             "platform_python_implementation": "CPython",
-            "platform_release": "4.14.12-gentoo",
-            "platform_system": "Linux",
-            "platform_version": "#3 SMP Tue Jan 9 11:57:47 EST 2018",
-            "python_full_version": "3.6.1",
+            "platform_release": "17.5.0",
+            "platform_system": "Darwin",
+            "platform_version": "Darwin Kernel Version 17.5.0: Mon Mar  5 22:24:32 PST 2018; root:xnu-4570.51.1~1/RELEASE_X86_64",
+            "python_full_version": "3.6.4",
             "python_version": "3.6",
-            "sys_platform": "linux"
+            "sys_platform": "darwin"
         },
         "pipfile-spec": 6,
         "requires": {},
@@ -71,9 +71,10 @@
         },
         "django-fiction-outlines": {
             "hashes": [
-                "sha256:72c090853a8d5a5e0a005f99c9ef4a5b93134818d8745bd6196ed00adbeaa411"
+                "sha256:9ba267275d60e02a458ccd68493c1a3d2c8ef5029dc67452f3186cf2b162ecc8",
+                "sha256:a68c5aad21f1ab091e27b52ac662027e06651728a80226a8400e7719bc474b45"
             ],
-            "version": "==0.1.4"
+            "version": "==0.1.5"
         },
         "django-filter": {
             "hashes": [
@@ -102,6 +103,11 @@
                 "sha256:fd13e304ba37ff09e601c4797d893fb7d3e699a789b5afb0b09d686f94470441"
             ],
             "version": "==0.22.2"
+        },
+        "django-taggit-serializer": {
+            "editable": true,
+            "git": "https://github.com/maceoutliner/django-taggit-serializer.git",
+            "ref": "37aaf718e85e7a1a5afc034ea0ca3e511b881731"
         },
         "django-treebeard": {
             "hashes": [
