@@ -14,7 +14,7 @@ coreapi = "*"
 markdown = "*"
 django-filter = "*"
 django = "*"
-taggit_serializer = {git = "https://github.com/maceoutliner/django-taggit-serializer.git", editable = true}
+django-taggit-serializer = ">=0.1.6"
 
 
 [dev-packages]
