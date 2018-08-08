@@ -57,7 +57,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'django-fiction-outlines',
+        'django-fiction-outlines>=0.3',
         'django-rest-framework-rules',
         'djangorestframework',
         'coreapi',

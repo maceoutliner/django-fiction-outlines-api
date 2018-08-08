@@ -1,4 +1,4 @@
-django-fiction-outlines
+django-fiction-outlines>=0.3
 django-rest-framework-rules
 djangorestframework
 coreapi
