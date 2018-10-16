@@ -3,6 +3,11 @@
 History
 -------
 
+**unreleased**
+++++++++++++++
+
+* Support for both python 3.6 and 3.7
+
 0.2.0 (2018-08-08)
 ++++++++++++++++++
 
