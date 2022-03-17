@@ -2,8 +2,7 @@
 Django Fiction Outlines API
 =============================
 
-.. image:: https://badge.fury.io/py/django-fiction-outlines-api.svg
-    :target: https://badge.fury.io/py/django-fiction-outlines-api
+.. image:: https://img.shields.io/pypi/v/django-fiction-outlines-api?color=green   :alt: PyPI
 
 .. image:: https://github.com/maceoutliner/django-fiction-outlines-api/actions/workflows/tests.yml/badge.svg?branch=master
     :target: https://github.com/maceoutliner/django-fiction-outlines-api/actions/workflows/tests.yml
