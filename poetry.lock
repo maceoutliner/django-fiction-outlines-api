@@ -117,6 +117,17 @@ tomli = {version = "*", optional = true, markers = "extra == \"toml\""}
 toml = ["tomli"]
 
 [[package]]
+name = "dj-taggit-serializer"
+version = "0.1.7"
+description = "The Django Taggit serializer for Django REST Framework"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+django-taggit = "*"
+
+[[package]]
 name = "django"
 version = "4.0.3"
 description = "A high-level Python web framework that encourages rapid development and clean, pragmatic design."
@@ -205,18 +216,6 @@ python-versions = ">=3.6"
 
 [package.dependencies]
 Django = ">=2.2"
-
-[[package]]
-name = "django-taggit-serializer"
-version = "0.1.7"
-description = "The Django Taggit serializer for tDjango REST Framework"
-category = "main"
-optional = false
-python-versions = "*"
-
-[package.dependencies]
-django-taggit = "*"
-six = "*"
 
 [[package]]
 name = "django-test-plus"
@@ -794,7 +793,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "ba47f7801c57046d54378957bb7646c75817449489d70dfeddeaafc4b9247876"
+content-hash = "6dbe5e52f696978c37b282aeea288952f7d066d07f068388db9b9e124b04df60"
 
 [metadata.files]
 alabaster = [
@@ -880,6 +879,9 @@ coverage = [
     {file = "coverage-6.3.2-pp36.pp37.pp38-none-any.whl", hash = "sha256:18d520c6860515a771708937d2f78f63cc47ab3b80cb78e86573b0a760161faf"},
     {file = "coverage-6.3.2.tar.gz", hash = "sha256:03e2a7826086b91ef345ff18742ee9fc47a6839ccd517061ef8fa1976e652ce9"},
 ]
+dj-taggit-serializer = [
+    {file = "dj-taggit-serializer-0.1.7.tar.gz", hash = "sha256:3878d7034e9cc81c1d788968f00885c4dc1dad17a93061c0946be2f2faa98fe2"},
+]
 django = [
     {file = "Django-4.0.3-py3-none-any.whl", hash = "sha256:1239218849e922033a35d2a2f777cb8bee18bd725416744074f455f34ff50d0c"},
     {file = "Django-4.0.3.tar.gz", hash = "sha256:77ff2e7050e3324c9b67e29b6707754566f58514112a9ac73310f60cd5261930"},
@@ -906,9 +908,6 @@ django-rest-framework-rules = [
 django-taggit = [
     {file = "django-taggit-2.1.0.tar.gz", hash = "sha256:a9f41e4ad58efe4b28d86f274728ee87eb98eeae90c9eb4b4efad39e5068184e"},
     {file = "django_taggit-2.1.0-py3-none-any.whl", hash = "sha256:61547a23fc99967c9304107414a09e662b459f4163dbbae32e60b8ba40c34d05"},
-]
-django-taggit-serializer = [
-    {file = "django-taggit-serializer-0.1.7.tar.gz", hash = "sha256:f712eb2482079be452bcd1e82b18a820e26427c3ee1cef2b4fcd4d6b8b9f14d0"},
 ]
 django-test-plus = [
     {file = "django-test-plus-2.2.0.tar.gz", hash = "sha256:e8826e9715cd52b8bf2a426cda0a6bb900a45aee5b2d7837fc6d2ca81dabee6f"},

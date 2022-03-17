@@ -1,6 +1,6 @@
 import logging
 from django.db import transaction
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django.http import Http404
 from treebeard.exceptions import InvalidPosition, InvalidMoveToDescendant, PathOverflow
 from rest_framework.generics import get_object_or_404
