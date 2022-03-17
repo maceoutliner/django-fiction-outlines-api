@@ -29,6 +29,7 @@ pip-log.txt
 .venv/*
 nosetests.xml
 htmlcov
+.envrc
 
 # Editors
 .#*
@@ -52,4 +53,9 @@ output/*/index.html
 docs/_build
 
 .python-version
+
 .envrc
+
+
+.idea/*
+
