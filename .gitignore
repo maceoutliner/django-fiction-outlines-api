@@ -52,3 +52,4 @@ output/*/index.html
 docs/_build
 
 .python-version
+.envrc
