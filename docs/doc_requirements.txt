@@ -1,6 +1,6 @@
 django>=2.0
 -e git+https://github.com/maceoutliner/django-taggit-serializer.git#egg=taggit_serializer
 django-fiction-outlines
-djangorestframework
+djangorestframework==3.13.1
 django-rest-framework-rules
 -r ../test_requirements.txt
