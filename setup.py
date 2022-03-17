@@ -57,7 +57,7 @@ setup(
     ],
     include_package_data=True,
     install_requires=[
-        'django-fiction-outlines>=0.3',
+        'django-fiction-outlines>=0.4',
         'django-rest-framework-rules',
         'djangorestframework',
         'coreapi',
@@ -72,13 +72,14 @@ setup(
         'Source': 'https://github.com/maceoutliner/django-fiction-outlines-api/',
         'Issue Tracker': 'https://github.com/maceoutliner/django-fiction-outlines-api/issues',
     },
-    python_requires='~=3.6',
+    python_requires='~=3.9',
     classifiers=[
         'Development Status :: 3 - Alpha',
         'Framework :: Django',
         'Intended Audience :: Developers',
         'License :: OSI Approved :: BSD License',
         'Natural Language :: English',
-        'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3.10',
     ],
 )

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "django-fiction-outlines-api"
-version = "0.2.0"
+version = "0.3.0"
 description = "A RESTful JSON API for django-fiction-outlines."
 authors = ["Daniel Andrlik <daniel@andrlik.org>"]
 license = "BSD-3-Clause"
