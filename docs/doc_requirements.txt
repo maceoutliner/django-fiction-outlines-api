@@ -1,5 +1,5 @@
 django>=2.0
 dj-taggit-serializer
 django-fiction-outlines
-djangorestframework
+djangorestframework==3.14.0
 django-rest-framework-rules

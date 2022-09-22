@@ -1,6 +1,6 @@
 django-fiction-outlines>=0.3.1
 django-rest-framework-rules
-djangorestframework
+djangorestframework==3.14.0
 coreapi
 django-filter
 Markdown
