@@ -3,5 +3,5 @@ django-rest-framework-rules
 djangorestframework
 coreapi
 django-filter
-Markdown
+Markdown==3.4.3
 -e git+https://github.com/maceoutliner/django-taggit-serializer.git#egg=taggit_serializer
